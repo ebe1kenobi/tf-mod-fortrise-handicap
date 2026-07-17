@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using Monocle;
 using TowerFall;
 
@@ -10,12 +11,27 @@ namespace TFModFortRisePoto
     {
       On.TowerFall.VersusModeButton.Update += Update_patch;
       On.TowerFall.VersusModeButton.Render += Render_patch;
+      //On.TowerFall.MainMenu.Update += Update_patch;
+      On.TowerFall.VersusMapButton.OnConfirm += MapConfirm_patch;
+
     }
 
     internal static void Unload()
     {
       On.TowerFall.VersusModeButton.Update -= Update_patch;
       On.TowerFall.VersusModeButton.Render -= Render_patch;
+      //On.TowerFall.MainMenu.Update -= Update_patch;
+      On.TowerFall.VersusMapButton.OnConfirm -= MapConfirm_patch;
+
+    }
+
+    // Tant que la popup est ouverte, on ne demarre pas le match (sinon la scene
+    // menu est remplacee sans fermer la popup). Il faut fermer la popup d'abord.
+    private static void MapConfirm_patch(On.TowerFall.VersusMapButton.orig_OnConfirm orig, global::TowerFall.VersusMapButton self)
+    {
+      if (UIVersusHandicapPopup.IsOpen)
+        return;
+      orig(self);
     }
 
     private static bool AnyPlayerArrowsPressed()
@@ -30,14 +46,35 @@ namespace TFModFortRisePoto
       return false;
     }
 
-    private static void OpenHandicapPopup(global::TowerFall.VersusModeButton self)
-    {
-      if (UIVersusHandicapPopup.IsOpen || self.Scene == null)
-        return;
+    //private static void Update_patch(On.TowerFall.MainMenu.orig_Update orig, global::TowerFall.MainMenu self)
+    //{
+    //  //mainMenu.Add(new UIVersusHandicapPopup(self));
+    //  bool tKeyPressed = MInput.Keyboard.Pressed(Keys.T);
 
-      Sounds.ui_click.Play(160f, 1f);
-      self.Scene.Add(new UIVersusHandicapPopup(self));
-    }
+    //  if (tKeyPressed)
+    //  {
+    //    Logger.Info($"[T KEY PRESSED!!!] In MainMenu");
+    //    OpenHandicapPopup2(self);
+    //    return;
+    //  }
+
+    //  orig(self);
+    //}
+
+    //private static void OpenHandicapPopup2(global::TowerFall.MainMenu self)
+    //{
+    //  self.Add(new UIVersusHandicapPopup(self));
+    //}
+
+    //private static void OpenHandicapPopup(global::TowerFall.VersusModeButton self)
+    //{
+    //  if (UIVersusHandicapPopup.IsOpen || self.Scene == null)
+    //    return;
+
+    //  Sounds.ui_click.Play(160f, 1f);
+    //  self.Scene.Add(new UIVersusHandicapPopup(self));
+
+    //}
 
     private static void Update_patch(On.TowerFall.VersusModeButton.orig_Update orig, global::TowerFall.VersusModeButton self)
     {
@@ -49,7 +86,20 @@ namespace TFModFortRisePoto
       }
       if (self.Selected && !UIVersusHandicapPopup.IsOpen && AnyPlayerArrowsPressed())
       {
-        OpenHandicapPopup(self);
+        //OpenHandicapPopup(self);
+        //return;
+
+        //if (UIVersusHandicapPopup.IsOpen || self.Scene == null)
+        //  return;
+
+        //Sounds.ui_click.Play(160f, 1f);
+        //self.Scene.Add(new UIVersusHandicapPopup(self));
+
+        if (self.Scene != null)
+        {
+          Sounds.ui_click.Play(160f, 1f);
+          self.Scene.Add(new UIVersusHandicapPopup(self));
+        }
         return;
       }
 

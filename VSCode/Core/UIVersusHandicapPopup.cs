@@ -19,7 +19,18 @@ namespace TFModFortRisePoto
       RefreshActivePlayers();
     }
 
-    public static bool IsOpen { get; private set; }
+    public UIVersusHandicapPopup(MainMenu ownerButton)
+    {
+      //this.ownerButton = ownerButton;
+      Position = new Vector2(160f, 120f);
+      RefreshActivePlayers();
+    }
+
+    //public static bool IsOpen { get; private set; }
+    public static UIVersusHandicapPopup Current;
+
+    public static bool IsOpen => Current != null && Current.Scene == Engine.Instance.Scene;
+
 
     private void RefreshActivePlayers()
     {
@@ -40,7 +51,7 @@ namespace TFModFortRisePoto
     public override void Added()
     {
       base.Added();
-      IsOpen = true;
+      Current = this;
       if (ownerButton != null)
         ownerButton.Selected = false;
 
@@ -50,7 +61,8 @@ namespace TFModFortRisePoto
     public override void Removed()
     {
       base.Removed();
-      IsOpen = false;
+      if (Current == this)
+        Current = null;
       Sounds.ui_unpause.Play(160f);
       MenuInput.Clear();
 
