@@ -1,7 +1,7 @@
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRisePoto
+namespace TFModFortRiseHandicap
 {
   /// <summary>
   /// Per-player handicap configured from the versus match settings screen.
@@ -64,29 +64,34 @@ namespace TFModFortRisePoto
       return GetLivesHandicap(playerIndex);
     }
 
-    //public static void ApplyVictoryHandicap(global::TowerFall.Session session)
-    //{
-    //  if (session == null)
-    //    return;
+    /// <summary>
+    /// Applique l'avance en victoires au demarrage du match (une seule fois).
+    /// On met a jour Scores ET OldScores pour que l'ecran de fin de manche
+    /// n'anime pas un gain de points qui n'a pas eu lieu.
+    /// </summary>
+    public static void ApplyVictoryHandicap(Session session)
+    {
+      if (session == null)
+        return;
 
-    //  for (int scoreIndex = 0; scoreIndex < session.Scores.Length; scoreIndex++)
-    //  {
-    //    int bonus = 0;
-    //    for (int playerIndex = 0; playerIndex < TFGame.Players.Length; playerIndex++) //todo 8
-    //    {
-    //      if (!TFGame.Players[playerIndex])
-    //        continue;
+      for (int scoreIndex = 0; scoreIndex < session.Scores.Length; scoreIndex++)
+      {
+        int bonus = 0;
+        for (int playerIndex = 0; playerIndex < TFGame.Players.Length; playerIndex++)
+        {
+          if (!TFGame.Players[playerIndex])
+            continue;
 
-    //      if (session.GetScoreIndex(playerIndex) == scoreIndex)
-    //        bonus += GetVictoryHandicap(playerIndex);
-    //    }
+          if (session.GetScoreIndex(playerIndex) == scoreIndex)
+            bonus += GetVictoryHandicap(playerIndex);
+        }
 
-    //    if (bonus <= 0)
-    //      continue;
+        if (bonus <= 0)
+          continue;
 
-    //    session.Scores[scoreIndex] += bonus;
-    //    session.OldScores[scoreIndex] += bonus;
-    //  }
-    //}
+        session.Scores[scoreIndex] += bonus;
+        session.OldScores[scoreIndex] += bonus;
+      }
+    }
   }
 }

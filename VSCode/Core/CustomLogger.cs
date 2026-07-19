@@ -3,7 +3,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 
-namespace TFModFortRisePoto
+namespace TFModFortRiseHandicap
 {
   public class CustomLogger {
     static object l = new object();

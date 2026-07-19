@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRisePoto
+namespace TFModFortRiseHandicap
 {
   public class UIVersusHandicapPopup : Entity
   {

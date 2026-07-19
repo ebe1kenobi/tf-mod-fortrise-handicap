@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace TFModFortRisePoto
+namespace TFModFortRiseHandicap
 {
   public static class Logger {
     static CustomLogger logger;
