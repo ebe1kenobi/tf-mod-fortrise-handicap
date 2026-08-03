@@ -54,7 +54,13 @@ namespace TFModFortRiseHandicap
       Current = this;
       if (ownerButton != null)
         ownerButton.Selected = false;
-
+      // Bloque les entrees du menu en arriere-plan tant que la popup est ouverte :
+      // - MainMenu.Update ne traite plus MenuInput.Back (retour ecran precedent)
+      // - VersusBeginButton.Update ne traite plus MenuInput.Start (lancement du match)
+      // Meme pattern que le popup vanilla ClearAllData et que UISpeedRunPopup.
+      MainMenu menu = Scene as MainMenu;
+      if (menu != null)
+        menu.CanAct = false;
       Sounds.ui_pause.Play(160f);
     }
 
@@ -65,7 +71,9 @@ namespace TFModFortRiseHandicap
         Current = null;
       Sounds.ui_unpause.Play(160f);
       MenuInput.Clear();
-
+      MainMenu menu = Scene as MainMenu;
+      if (menu != null)
+        menu.CanAct = true;
       if (ownerButton != null)
         ownerButton.Selected = true;
     }
