@@ -14,7 +14,7 @@ namespace TFModFortRiseHandicap
     public const int MaxLivesHandicap = 1000;
 
     private static readonly int[] VictoryHandicap = new int[8];
-    private static readonly int[] LivesHandicap = new int[8]; 
+    private static readonly int[] LivesHandicap = { 1,1,1,1,1,1,1,1}; 
 
     public static int GetVictoryHandicap(int playerIndex)
     {
@@ -45,14 +45,14 @@ namespace TFModFortRiseHandicap
       if (playerIndex < 0 || playerIndex >= LivesHandicap.Length)
         return;
 
-      LivesHandicap[playerIndex] = Calc.Clamp(LivesHandicap[playerIndex] + delta, 0, MaxLivesHandicap);
+      LivesHandicap[playerIndex] = Calc.Clamp(LivesHandicap[playerIndex] + delta, 1, MaxLivesHandicap);
     }
 
     public static bool HasAnyHandicap()
     {
       for (int i = 0; i < LivesHandicap.Length; i++)
       {
-        if (VictoryHandicap[i] > 0 || LivesHandicap[i] > 0)
+        if (VictoryHandicap[i] > 0 || LivesHandicap[i] > 1)
           return true;
       }
 

@@ -101,6 +101,15 @@ namespace TFModFortRiseHandicap
       if (wrapped)
         return;
 
+      // Le decompte de vies n'existe que dans les modes dont le RoundLogic est
+      // patche. Sans ce test, la barre restait affichee dans un mode ajoute par un
+      // mod (PlayTag...) joue apres une partie ou des vies avaient ete reglees :
+      // les segments ne bougeaient jamais, puisque rien ne les decremente la-bas.
+      Level level = __instance.Level;
+      if (level == null || level.Session == null
+          || !TFModFortRiseHandicapModule.IsHandicapMode(level.Session.MatchSettings))
+        return;
+
       int maxLives = Math.Max(1, PlayerHandicap.GetStartingLives(playerIndex));
       int lives = Math.Max(0, LivesRemaining[playerIndex]);
       if (maxLives <= 1)

@@ -45,12 +45,8 @@ namespace TFModFortRiseHandicap
 
     private static bool Update_patch(VersusModeButton __instance)
     {
-      if (MainMenu.VersusMatchSettings.Mode != Modes.HeadHunters
-          && MainMenu.VersusMatchSettings.Mode != Modes.LastManStanding
-          && MainMenu.VersusMatchSettings.Mode != Modes.TeamDeathmatch)
-      {
+      if (!TFModFortRiseHandicapModule.IsHandicapMode(MainMenu.VersusMatchSettings))
         return true;
-      }
 
       if (__instance.Selected && !UIVersusHandicapPopup.IsOpen && AnyPlayerArrowsPressed())
       {
@@ -70,12 +66,8 @@ namespace TFModFortRiseHandicap
       if (!__instance.Selected || UIVersusHandicapPopup.IsOpen)
         return;
 
-      if (MainMenu.VersusMatchSettings.Mode != Modes.HeadHunters
-          && MainMenu.VersusMatchSettings.Mode != Modes.LastManStanding
-          && MainMenu.VersusMatchSettings.Mode != Modes.TeamDeathmatch)
-      {
+      if (!TFModFortRiseHandicapModule.IsHandicapMode(MainMenu.VersusMatchSettings))
         return;
-      }
 
       Vector2 hintPos = __instance.Position + new Vector2(0f, 22f);
       Draw.OutlineTextCentered(TFGame.Font, "Y: HANDICAP/LIFE", hintPos, Calc.HexToColor("FFEC5E"), 1f);
