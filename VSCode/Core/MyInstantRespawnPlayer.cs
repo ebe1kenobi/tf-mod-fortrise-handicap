@@ -20,12 +20,8 @@ namespace TFModFortRiseHandicap
     private static readonly float[] ImmunityFramesRemaining = new float[8];
     private const int FramesPerSecond = 60;
 
-    // Etat transmis entre le prefix et le postfix d'un meme appel patche.
-    private struct HUDRenderState
-    {
-      public bool ArrowHudHidden;
-      public bool PreviousArrowHudVisible;
-    }
+    // Nombre de vies au-dela duquel on remplace la barre par un compteur.
+    private const int MaxLifeSegments = 8;
 
     private struct UpdateState
     {
@@ -64,8 +60,30 @@ namespace TFModFortRiseHandicap
       );
     }
 
+    /// <summary>
+    /// Le systeme de vies n'existe que dans les modes dont le RoundLogic est patche.
+    /// Ce test manquait sur tous les hooks sauf l'affichage : dans un mode ajoute par
+    /// un mod (PlayTag...), le HUD etait bien masque mais les joueurs continuaient de
+    /// reapparaitre, puisque OnPlayerDeath decomptait les vies malgre tout.
+    /// </summary>
+    private static bool EnabledFor(Player self)
+    {
+      return self != null
+          && self.Level != null
+          && self.Level.Session != null
+          && TFModFortRiseHandicapModule.IsHandicapMode(self.Level.Session.MatchSettings);
+    }
+
+    private static bool EnabledFor(Session session)
+    {
+      return session != null
+          && TFModFortRiseHandicapModule.IsHandicapMode(session.MatchSettings);
+    }
+
     private static void Added_patch(Player __instance)
     {
+      if (!EnabledFor(__instance)) return;
+
       int p = __instance.PlayerIndex;
       if (LivesRemaining[p] <= 0)
       {
@@ -79,36 +97,38 @@ namespace TFModFortRiseHandicap
       }
     }
 
-    private static void HUDRender_prefix_patch(Player __instance, bool wrapped, ref HUDRenderState __state)
+    /// <summary>
+    /// Masque le compteur de fleches pendant l'immunite qui suit une reapparition.
+    ///
+    /// Mettre ArrowHUD.Visible a false ne suffit pas : Player.HUDRender appelle
+    /// ArrowHUD.Render() directement, sans jamais consulter Visible. On saute donc la
+    /// methode entiere et on rend l'indicateur de joueur nous-memes, puisque c'est
+    /// l'autre chose qu'elle affichait. Le postfix, lui, s'execute quand meme et
+    /// continue de dessiner la barre de vies.
+    /// </summary>
+    private static bool HUDRender_prefix_patch(Player __instance, bool wrapped)
     {
-      int playerIndex = __instance.PlayerIndex;
-      __state.ArrowHudHidden = ImmunityFramesRemaining[playerIndex] > 0f && __instance.ArrowHUD != null;
-      if (__state.ArrowHudHidden)
-      {
-        __state.PreviousArrowHudVisible = __instance.ArrowHUD.Visible;
-        __instance.ArrowHUD.Visible = false;
-      }
+      if (!EnabledFor(__instance))
+        return true;
+
+      if (ImmunityFramesRemaining[__instance.PlayerIndex] <= 0f)
+        return true;
+
+      if (!wrapped && __instance.Indicator != null)
+        __instance.Indicator.Render();
+
+      return false;
     }
 
-    private static void HUDRender_postfix_patch(Player __instance, bool wrapped, ref HUDRenderState __state)
+    private static void HUDRender_postfix_patch(Player __instance, bool wrapped)
     {
-      int playerIndex = __instance.PlayerIndex;
-      if (__state.ArrowHudHidden)
-      {
-        __instance.ArrowHUD.Visible = __state.PreviousArrowHudVisible;
-      }
-
       if (wrapped)
         return;
 
-      // Le decompte de vies n'existe que dans les modes dont le RoundLogic est
-      // patche. Sans ce test, la barre restait affichee dans un mode ajoute par un
-      // mod (PlayTag...) joue apres une partie ou des vies avaient ete reglees :
-      // les segments ne bougeaient jamais, puisque rien ne les decremente la-bas.
-      Level level = __instance.Level;
-      if (level == null || level.Session == null
-          || !TFModFortRiseHandicapModule.IsHandicapMode(level.Session.MatchSettings))
+      if (!EnabledFor(__instance))
         return;
+
+      int playerIndex = __instance.PlayerIndex;
 
       int maxLives = Math.Max(1, PlayerHandicap.GetStartingLives(playerIndex));
       int lives = Math.Max(0, LivesRemaining[playerIndex]);
@@ -118,11 +138,14 @@ namespace TFModFortRiseHandicap
       if (__instance.State == Player.PlayerStates.Ducking || __instance.Invisible)
         return;
 
-      //if (TFModFortRiseHandicapModule.Settings.lifeNumber > 8) {
-      //  Vector2 textPos = __instance.Position + new Vector2(0f, -22f);
-      //  Draw.OutlineTextCentered(TFGame.Font, lives.ToString(), textPos, Color.White, 1f);
-      //  return;
-      //}
+      // Au-dela de ce seuil la barre devient illisible et deborde largement de
+      // l'archer : on affiche le compte en clair, comme le fait le mod Respawn.
+      if (maxLives > MaxLifeSegments)
+      {
+        Vector2 textPos = __instance.Position + new Vector2(0f, -22f);
+        Draw.OutlineTextCentered(TFGame.Font, lives.ToString(), textPos, Color.White, 1f);
+        return;
+      }
 
       float segmentWidth = 3f;
       float segmentHeight = 3f;
@@ -142,6 +165,20 @@ namespace TFModFortRiseHandicap
 
     private static void StartRound_patch(Session __instance)
     {
+      if (!EnabledFor(__instance))
+      {
+        // Compteurs remis a zero hors mode handicap : un reglage laisse par une
+        // partie precedente ne doit rien pouvoir declencher ici.
+        for (int i = 0; i < LivesRemaining.Length; i++)
+        {
+          LivesRemaining[i] = 0;
+          ShouldRespawn[i] = false;
+          HasRoundSpawnPosition[i] = false;
+          ImmunityFramesRemaining[i] = 0f;
+        }
+        return;
+      }
+
       for (int i = 0; i < TFGame.Players.Length; i++)
       {
         LivesRemaining[i] = TFGame.Players[i] ? PlayerHandicap.GetStartingLives(i) : 0;
@@ -163,6 +200,8 @@ namespace TFModFortRiseHandicap
 
     private static void Update_prefix_patch(Player __instance, ref UpdateState __state)
     {
+      if (!EnabledFor(__instance)) return;
+
       int p = __instance.PlayerIndex;
       __state.ShootLockedByImmunity = ImmunityFramesRemaining[p] > 0f;
       if (__state.ShootLockedByImmunity)
@@ -184,6 +223,8 @@ namespace TFModFortRiseHandicap
 
     private static bool HurtBouncedOn_patch(Player __instance, int bouncerIndex)
     {
+      if (!EnabledFor(__instance)) return true;
+
       if (bouncerIndex >= 0 &&
           bouncerIndex < ImmunityFramesRemaining.Length &&
           ImmunityFramesRemaining[bouncerIndex] > 0f)
@@ -196,10 +237,10 @@ namespace TFModFortRiseHandicap
 
     private static void OnPlayerDeath_prefix_patch(Session __instance, Player player, PlayerCorpse corpse, int playerIndex, DeathCause deathType, Vector2 position, int killerIndex, ref bool __state)
     {
-      // Check if we're in instant respawn mode
-      ref int lives = ref LivesRemaining[playerIndex];
-
       __state = false;
+      if (!EnabledFor(__instance)) return;
+
+      ref int lives = ref LivesRemaining[playerIndex];
 
       if (lives > 1)
       {
@@ -256,7 +297,7 @@ namespace TFModFortRiseHandicap
 
       session.CurrentLevel.Add(newPlayer);
 
-      int immunityFrames = Math.Max(0, TFModFortRiseHandicapModule.Settings.handicapRespawnImmunitySeconds * FramesPerSecond);
+      int immunityFrames = Math.Max(0, PlayerHandicap.GetImmunitySeconds() * FramesPerSecond);
       if (immunityFrames > 0)
       {
         newPlayer.Flash(immunityFrames);

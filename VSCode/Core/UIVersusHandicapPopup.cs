@@ -67,6 +67,11 @@ namespace TFModFortRiseHandicap
     public override void Removed()
     {
       base.Removed();
+
+      // Les reglages ne sont ecrits sur disque qu'en sortant du menu Options du
+      // jeu : sans cet appel, une valeur changee ici serait perdue en quittant.
+      TFModFortRiseHandicapModule.SaveSettingsNow();
+
       if (Current == this)
         Current = null;
       Sounds.ui_unpause.Play(160f);
@@ -103,32 +108,24 @@ namespace TFModFortRiseHandicap
         return;
       }
 
+      // Trois champs desormais : victoires, vies, puis immunite. Cette derniere
+      // est globale, pas per-joueur : elle vit dans les reglages du module.
       if (MenuInput.Alt)
       {
-        selectedField = 1 - selectedField;
+        selectedField = (selectedField + 1) % 3;
         Sounds.ui_move2.Play(160f, 1f);
         return;
       }
 
       if (MenuInput.Left)
       {
-        if (selectedField == 0)
-          PlayerHandicap.AdjustVictories(playerIndex, -1);
-        else
-          PlayerHandicap.AdjustLives(playerIndex, -1);
-
-        Sounds.ui_click.Play(160f, 1f);
+        Adjust(playerIndex, -1);
         return;
       }
 
       if (MenuInput.Right)
       {
-        if (selectedField == 0)
-          PlayerHandicap.AdjustVictories(playerIndex, 1);
-        else
-          PlayerHandicap.AdjustLives(playerIndex, 1);
-
-        Sounds.ui_click.Play(160f, 1f);
+        Adjust(playerIndex, 1);
         return;
       }
 
@@ -136,12 +133,24 @@ namespace TFModFortRiseHandicap
         RemoveSelf();
     }
 
+    private void Adjust(int playerIndex, int delta)
+    {
+      if (selectedField == 0)
+        PlayerHandicap.AdjustVictories(playerIndex, delta);
+      else if (selectedField == 1)
+        PlayerHandicap.AdjustLives(playerIndex, delta);
+      else
+        PlayerHandicap.AdjustImmunity(delta);
+
+      Sounds.ui_click.Play(160f, 1f);
+    }
+
     public override void Render()
     {
       Draw.Rect(0, 0, 320, 240, Color.Black * 0.7f);
       Draw.OutlineTextCentered(TFGame.Font, "HANDICAP", Position + new Vector2(0f, -72f), Color.White, 2f);
-      Draw.TextCentered(TFGame.Font, "LEFT/RIGHT: AJUSTER", Position + new Vector2(0f, -58f), Color.Gray);
-      Draw.TextCentered(TFGame.Font, "UP/DOWN: JOUEUR  ALT: CHAMP", Position + new Vector2(0f, -46f), Color.Gray);
+      Draw.TextCentered(TFGame.Font, "LEFT/RIGHT: ADJUST", Position + new Vector2(0f, -58f), Color.Gray);
+      Draw.TextCentered(TFGame.Font, "UP/DOWN: PLAYER  ALT: FIELD", Position + new Vector2(0f, -46f), Color.Gray);
 
       float rowY = Position.Y - 24f;
       for (int i = 0; i < activePlayers.Count; i++)
@@ -153,11 +162,18 @@ namespace TFModFortRiseHandicap
         string playerLabel = prefix + "P" + (playerIndex + 1);
         Vector2 rowPos = new Vector2(Position.X - 70f, rowY);
 
+        //Draw.Text(TFGame.Font, playerLabel, rowPos, ArcherData.GetColorA(playerIndex, Allegiance.Neutral));
+        //Draw.Text(TFGame.Font, "V:", rowPos + new Vector2(28f, 0f), rowColor);
+        //Draw.Text(TFGame.Font, PlayerHandicap.GetVictoryHandicap(playerIndex).ToString(), rowPos + new Vector2(40f, 0f), selected && selectedField == 0 ? Calc.HexToColor("FFEC5E") : rowColor);
+        //Draw.Text(TFGame.Font, "L:", rowPos + new Vector2(58f, 0f), rowColor);
+        //Draw.Text(TFGame.Font, PlayerHandicap.GetLivesHandicap(playerIndex).ToString(), rowPos + new Vector2(70f, 0f), selected && selectedField == 1 ? Calc.HexToColor("FFEC5E") : rowColor);
+
         Draw.Text(TFGame.Font, playerLabel, rowPos, ArcherData.GetColorA(playerIndex, Allegiance.Neutral));
-        Draw.Text(TFGame.Font, "V:", rowPos + new Vector2(28f, 0f), rowColor);
-        Draw.Text(TFGame.Font, PlayerHandicap.GetVictoryHandicap(playerIndex).ToString(), rowPos + new Vector2(40f, 0f), selected && selectedField == 0 ? Calc.HexToColor("FFEC5E") : rowColor);
-        Draw.Text(TFGame.Font, "L:", rowPos + new Vector2(58f, 0f), rowColor);
-        Draw.Text(TFGame.Font, PlayerHandicap.GetLivesHandicap(playerIndex).ToString(), rowPos + new Vector2(70f, 0f), selected && selectedField == 1 ? Calc.HexToColor("FFEC5E") : rowColor);
+        Draw.Text(TFGame.Font, "VICTORY:", rowPos + new Vector2(28f, 0f), rowColor);
+        Draw.Text(TFGame.Font, PlayerHandicap.GetVictoryHandicap(playerIndex).ToString(), rowPos + new Vector2(72f, 0f), selected && selectedField == 0 ? Calc.HexToColor("FFEC5E") : rowColor);
+        Draw.Text(TFGame.Font, "LIFE:", rowPos + new Vector2(94f, 0f), rowColor);
+        Draw.Text(TFGame.Font, PlayerHandicap.GetLivesHandicap(playerIndex).ToString(), rowPos + new Vector2(122f, 0f), selected && selectedField == 1 ? Calc.HexToColor("FFEC5E") : rowColor);
+
 
         //if (PlayerHandicap.GetVictoryHandicap(playerIndex) > 0)
         //{
@@ -172,9 +188,17 @@ namespace TFModFortRiseHandicap
         rowY += 14f;
       }
 
-      Draw.TextCentered(TFGame.Font, "V = VICTOIRES (TETES DE MORT)", Position + new Vector2(0f, 62f), Color.Gray);
-      Draw.TextCentered(TFGame.Font, "L = VIES SUPPLEMENTAIRES", Position + new Vector2(0f, 74f), Color.Gray);
-      Draw.TextCentered(TFGame.Font, "CONFIRMER / RETOUR: FERMER", Position + new Vector2(0f, 88f), Color.Gray);
+      // L'immunite est commune a tous les joueurs : une seule ligne, sous la liste,
+      // plutot qu'une colonne repetee a l'identique sur chaque ligne.
+      bool immunitySelected = selectedField == 2;
+      Color immunityColor = immunitySelected ? Calc.HexToColor("FFEC5E") : Color.White;
+      Draw.TextCentered(TFGame.Font,
+          (immunitySelected ? "> " : "  ") + "IMMUNITY (ALL): " + PlayerHandicap.GetImmunitySeconds() + "S",
+          Position + new Vector2(0f, 50f), immunityColor);
+
+      Draw.TextCentered(TFGame.Font, "VICTORY = VICTORIES", Position + new Vector2(0f, 66f), Color.Gray);
+      Draw.TextCentered(TFGame.Font, "LIFE = NUMBER OF LIVES", Position + new Vector2(0f, 78f), Color.Gray);
+      Draw.TextCentered(TFGame.Font, "CONFIRM / BACK: CLOSE", Position + new Vector2(0f, 92f), Color.Gray);
     }
   }
 }
