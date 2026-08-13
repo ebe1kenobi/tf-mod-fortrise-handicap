@@ -84,7 +84,7 @@ namespace TFModFortRiseHandicap
         //Debugger.Launch(); // Proposera d’attacher Visual Studio
       }
       Instance = this;
-      //TFModFortRiseHandicap.Logger.Init("TFModFortRiseHandicap");
+      TFModFortRiseHandicap.Logger.Init(logger);
 
       foreach (var hookable in Hookables)
       {
