@@ -1,5 +1,5 @@
 # Handicap
-
+<img width="640" height="400" alt="headhunters_122516_round_00" src="https://github.com/user-attachments/assets/b7916612-c737-49e0-9fd9-3321a6e62084" />
 Per-player handicap for the stock versus modes: give someone a head start in wins
 or extra lives, to even out a game between players of different levels. A life bar
 is drawn above the archers concerned.
@@ -17,6 +17,9 @@ Data and log files live in `<TowerFall>/FortRise/Saves/Handicap/` and `<TowerFal
 ## Usage
 
 Works in **Last Man Standing**, **Head Hunters** and **Team Deathmatch**.
+
+
+<img width="454" height="593" alt="image" src="https://github.com/user-attachments/assets/24e657a5-8b89-41b3-a2c8-9523e05745dd" />
 
 > **Opening the popup**: on the versus screen, with the relevant mode selected,
 > press **Y** (the "arrows" button on the controller) on the mode button. A hint is
