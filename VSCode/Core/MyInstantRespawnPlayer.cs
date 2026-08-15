@@ -37,8 +37,7 @@ namespace TFModFortRiseHandicap
       );
       harmony.Patch(
           AccessTools.DeclaredMethod(typeof(Player), nameof(Player.HUDRender)),
-          prefix: new HarmonyMethod(HUDRender_prefix_patch),
-          postfix: new HarmonyMethod(HUDRender_postfix_patch)
+          prefix: new HarmonyMethod(HUDRender_prefix_patch)
       );
       harmony.Patch(
           AccessTools.DeclaredMethod(typeof(Player), nameof(Player.HurtBouncedOn)),
@@ -120,49 +119,6 @@ namespace TFModFortRiseHandicap
       return false;
     }
 
-    private static void HUDRender_postfix_patch(Player __instance, bool wrapped)
-    {
-      if (wrapped)
-        return;
-
-      if (!EnabledFor(__instance))
-        return;
-
-      int playerIndex = __instance.PlayerIndex;
-
-      int maxLives = Math.Max(1, PlayerHandicap.GetStartingLives(playerIndex));
-      int lives = Math.Max(0, LivesRemaining[playerIndex]);
-      if (maxLives <= 1)
-        return;
-      //if (__instance.State == Player.PlayerStates.Ducking || __instance.DodgeSliding || __instance.Invisible)
-      if (__instance.State == Player.PlayerStates.Ducking || __instance.Invisible)
-        return;
-
-      // Au-dela de ce seuil la barre devient illisible et deborde largement de
-      // l'archer : on affiche le compte en clair, comme le fait le mod Respawn.
-      if (maxLives > MaxLifeSegments)
-      {
-        Vector2 textPos = __instance.Position + new Vector2(0f, -22f);
-        Draw.OutlineTextCentered(TFGame.Font, lives.ToString(), textPos, Color.White, 1f);
-        return;
-      }
-
-      float segmentWidth = 3f;
-      float segmentHeight = 3f;
-      float gap = 1f;
-      float barWidth = maxLives * segmentWidth + (maxLives - 1) * gap;
-      Vector2 barPos = (__instance.Position + new Vector2(-barWidth * 0.5f, -12.5f)).Floor();
-
-      Draw.Rect(barPos.X - 1f, barPos.Y - 1f, barWidth + 2f, segmentHeight + 2f, Color.Black * 0.75f);
-      //Color lifeColor = Color.Lerp(Color.Red, Color.LimeGreen, (float)lives / maxLives);
-      Color lifeColor = Color.LimeGreen;
-      for (int i = 0; i < maxLives; i++)
-      {
-        Color c = i < lives ? lifeColor : new Color(45, 45, 45);
-        Draw.Rect(barPos.X + i * (segmentWidth + gap), barPos.Y, segmentWidth, segmentHeight, c);
-      }
-    }
-
     private static void StartRound_patch(Session __instance)
     {
       if (!EnabledFor(__instance))
@@ -196,6 +152,11 @@ namespace TFModFortRiseHandicap
           HasRoundSpawnPosition[p] = true;
         }
       }
+
+      // La barre de vies est une entite du niveau, ajoutee a chaque manche : le
+      // postfix de HUDRender qui la dessinait ne partait pas, la methode etant trop
+      // petite pour survivre au JIT. Voir LivesHUD.
+      __instance.CurrentLevel.Add<LivesHUD>(new LivesHUD());
     }
 
     private static void Update_prefix_patch(Player __instance, ref UpdateState __state)
